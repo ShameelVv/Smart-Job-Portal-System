@@ -115,3 +115,18 @@ class Profile(models.Model):
         return f"{self.user.username} - {self.role}"
 
 
+class Notification(models.Model):
+    # Who receives this notification
+    recipient = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='notifications'
+    )
+    # The message text
+    message = models.TextField()
+
+    # False = unread (new), True = read (seen)
+    is_read = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"To {self.recipient.username}: {self.message[:40]}"

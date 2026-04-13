@@ -32,6 +32,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -39,9 +40,15 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'channels',
     'jobs',
     'corsheaders',
+      
 ]
+
+# Tell Django to use ASGI instead of WSGI
+ASGI_APPLICATION = "job_portal_backend.asgi.application"
+
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware', #to connect with react
@@ -138,3 +145,13 @@ CORS_ALLOW_ALL_ORIGINS = True  #to connect to react
 # to upload resume
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Tell Channels to use Redis as message broker
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}

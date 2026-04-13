@@ -6,7 +6,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 
 from rest_framework import serializers
-from .models import Job,JobCategory,Company,JobType,Skill
+from .models import Job,JobCategory,Company,JobType,Skill,Notification
 
 from django.db import transaction
 
@@ -121,6 +121,10 @@ class JobSerializer(serializers.ModelSerializer):
         source='job_type.name',
         read_only=True
     )
+    # code to get count to applicant 
+    applicant_count = serializers.SerializerMethodField()
+    def get_applicant_count(self, obj):
+        return Application.objects.filter(job=obj).count()
 
     def get_skills_list(self, obj):
         print(obj.skills.all())
@@ -132,7 +136,7 @@ class JobSerializer(serializers.ModelSerializer):
         'id', 'title', 'description', 'company', 'company_name',
         'category', 'category_name', 'salary', 'location',
         'employer', 'employer_email', 'posted_on',
-        'skills','skills_list','job_type','job_type_name'
+        'skills','skills_list','job_type','job_type_name','applicant_count'
         ]
         extra_kwargs={
             'company':{'required': False}
@@ -151,6 +155,11 @@ class ApplicationSerializer(serializers.ModelSerializer):
 
     resume = serializers.FileField(required=False)
 
+    applicant_name=serializers.CharField(source='applicant.username',read_only=True)
+
+    applicant_email = serializers.CharField(source='applicant.email', read_only=True)
+
+
     
     class Meta:
         model = Application
@@ -161,7 +170,9 @@ class ApplicationSerializer(serializers.ModelSerializer):
             'company',
             'status',
             'resume',
-            'applied_on'
+            'applied_on',
+            'applicant_name',
+            'applicant_email',
         ]
 
 
@@ -219,9 +230,10 @@ class SkillSerializer(serializers.ModelSerializer):
 class ProfileSerializer(serializers.ModelSerializer):
     username=serializers.CharField(source='user.username')
     email=serializers.EmailField(source='user.email')
+    preferred_category_name=serializers.CharField(source='preferred_category.name',read_only=True)
     class Meta:
         model = Profile
-        fields = ['username','email','role','preferred_category']
+        fields = ['username','email','role','preferred_category','preferred_category_name']
 
 
 
@@ -253,4 +265,10 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
         instance.save()
 
         return instance        
-        
+
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'message', 'is_read', 'created_at']

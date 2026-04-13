@@ -32,9 +32,12 @@ function Login() {
            const userRole = response.data.role;
       if(userRole==="employer"){
         navigate("/employerDashboard");
-      }else{
-        navigate("/JobSeekerDashboard");
+      }else if(userRole === "jobseeker"){
+        navigate("/jobseekerDashboard");
+      }else if(userRole === "admin"){
+        navigate("/adminUser")
       }
+      
 
     } catch (error) {
       alert("Login failed");

@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path
-from .views import RegisterView,LoginView,JobCreateView,JobListView,ApplyJobView,ApplicationView,ApplicantView,UpdateApplicationStatusView,AdminUserView,AdminJobsView,AdminApplicationView,DeleteJobView,BanUserView,JobCategoryView,CurrentUserView,JobTypeView,SkillView,ProfileView
+from .views import RegisterView,LoginView,JobCreateView,JobListView,ApplyJobView,ApplicationView,ApplicantView,UpdateApplicationStatusView,AdminUserView,AdminJobsView,AdminApplicationView,DeleteJobView,BanUserView,JobCategoryView,CurrentUserView,JobTypeView,SkillView,ProfileView,test_notification,NotificationListView,MarkNotificationReadView,MarkAllNotificationsReadView
 
 # to upload the resume
 from django.conf import settings
@@ -37,6 +37,7 @@ urlpatterns = [
     path('api/admin/users/', AdminUserView.as_view()),
     path('api/admin/jobs/', AdminJobsView.as_view()),
     path('api/admin/applications/', AdminApplicationView.as_view()),
+    
     path('api/admin/delete-job/<int:job_id>/', DeleteJobView.as_view()),
     path('api/admin/ban-user/<int:user_id>/', BanUserView.as_view()),
     
@@ -49,6 +50,11 @@ urlpatterns = [
 
     path('api/profile/', ProfileView.as_view()),
 
+    path('test-notify/', test_notification),
+
+    path('api/notifications/', NotificationListView.as_view()),
+path('api/notifications/<int:notification_id>/read/', MarkNotificationReadView.as_view()),
+path('api/notifications/read-all/', MarkAllNotificationsReadView.as_view()),
 
 ]
 

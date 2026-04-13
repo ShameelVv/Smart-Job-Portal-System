@@ -2,16 +2,22 @@ from django.shortcuts import render
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .serializers import RegisterSerializer,LoginSerializer,ApplicationSerializer,ApplicantSerializer,JobSerializer,UpdateApplicationStatusSerializer,JobCategorySerializer,CompanySerializer,JobTypeSerializer,SkillSerializer,ProfileSerializer,ProfileUpdateSerializer 
+from .serializers import RegisterSerializer,LoginSerializer,ApplicationSerializer,ApplicantSerializer,JobSerializer,UpdateApplicationStatusSerializer,JobCategorySerializer,CompanySerializer,JobTypeSerializer,SkillSerializer,ProfileSerializer,ProfileUpdateSerializer,NotificationSerializer 
 from rest_framework import status
 
 from rest_framework.permissions import IsAuthenticated
-from .models import Job, Profile,Application,JobCategory,Company,JobType,Skill
+from .models import Job, Profile,Application,JobCategory,Company,JobType,Skill,Notification
 
 from django.contrib.auth.models import User
 
 from rest_framework.parsers import MultiPartParser, FormParser
 
+from .utils import send_notification
+
+from django.http import JsonResponse
+from django.http import HttpResponse
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 
 
 
@@ -74,7 +80,25 @@ class JobCreateView(APIView):
         serializer = JobSerializer(data=data)
 
         if serializer.is_valid():
-            serializer.save(created_by=request.user)
+            serializer.save(created_by=request.user,company=company)
+            
+            # Notify ALL jobseekers about the new job
+            jobseeker_profiles = Profile.objects.filter(role='jobseeker')
+            channel_layer = get_channel_layer()
+            for profile in jobseeker_profiles:
+            # 1. Save to database inbox
+                Notification.objects.create(
+                    recipient=profile.user,
+                    message=f"💼 New job posted: '{serializer.data['title']}' at {company.name}"
+                )
+            # 2. Send real-time WebSocket notification
+            async_to_sync(channel_layer.group_send)(
+                f"user_{profile.user.id}",
+                {
+                    "type": "send_notification",
+                    "message": f"💼 New job posted: '{serializer.data['title']}' at {company.name}"
+                }
+            )
             return Response(serializer.data,status=status.HTTP_201_CREATED)
         return Response(serializer.errors,status=status.HTTP_400_BAD_REQUEST)
 
@@ -136,6 +160,22 @@ class ApplyJobView(APIView):
             job=job,
             applicant=request.user,
             resume=request.FILES.get('resume')
+        )
+        # 1. Save notification to database (so employer sees it in inbox)
+        employer = job.created_by
+        Notification.objects.create(
+            recipient=employer,
+            message=f"🙋 {request.user.username} applied for '{job.title}'"
+        )   
+
+        # 2. Send real-time WebSocket notification to employer
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"user_{employer.id}",
+            {
+                "type": "send_notification",
+                "message": f"🙋 {request.user.username} applied for '{job.title}'"
+            }
         )
 
         return Response(
@@ -215,10 +255,11 @@ class AdminUserView(APIView):
     permission_classes=[IsAuthenticated]
 
     def get(self,request):
-        if request.user.profile.role !="admin":
+        profile=Profile.objects.get(user=request.user)
+        if profile.role !="admin":
             return Response({'message':'unauthorized User'},status=403)
         user=User.objects.all()
-        data=[{'id':u.id,"username":u.username}for u in user]
+        data=[{"id":u.id,"username":u.username,"email":u.email,"is_active":u.is_active}for u in user]
 
         return Response(data)
 
@@ -227,7 +268,8 @@ class AdminJobsView(APIView):
     permission_classes=[IsAuthenticated]
 
     def get(self,request):
-        if request.user.profile.role !='admin':
+        profile=Profile.objects.get(user=request.user)
+        if profile.role !='admin':
             return Response({'message':'unauthorized user'},status=403)
         jobs=Job.objects.all()
         serializer=JobSerializer(jobs,many=True)
@@ -238,18 +280,32 @@ class AdminApplicationView(APIView):
     permission_classes=[IsAuthenticated]
 
     def get(self,request):
-        if request.user.profile.role !='admin':
+        profile=Profile.objects.get(user=request.user)
+        if profile.role !='admin':
             return Response ({'message':'unauthorized user'},status=403)
         applications=Application.objects.all()
-        serailizer=ApplicationSerializer(applications,many=true)   
+        serailizer=ApplicationSerializer(applications,many=True)   
         return Response(serailizer.data) 
     
+# admin dashboards applicant name and mail view function
+# class AdminApplicantView(APIView):
+#     permission_classes=[IsAuthenticated]
+
+#     def get(self,request):
+#         profile=Profile.objects.get(user=request.user) 
+#         if profile.role !='admin':
+#             return Response({'message':'unauthorized user'},status=403)
+#         applicants=Application.objects.all()
+#         serializer=ApplicantSerializer(applicants,many=True)
+#         return Response(serializer.data)
+        
 # admin dashboard view function to view all delete job
 class DeleteJobView(APIView):
     permission_classes=[IsAuthenticated]
 
     def delete(self,request,job_id):
-        if request.user.profile.role !='admin':
+        profile=Profile.objects.get(user=request.user)
+        if profile.role !='admin':
             return Response({'message':'unauthorized user'},status=403)
         try:
             job=Job.objects.get(id=job_id)
@@ -263,16 +319,22 @@ class BanUserView(APIView):
     permission_classes=[IsAuthenticated]
 
     def patch(self,request,user_id):
-        if request.user.profile.role !='admin':
+        profile=Profile.objects.get(user=request.user)
+        if profile.role !='admin':
             return Response({'message':'unauthorized user'},status=403)
         try:
             user=User.objects.get(id=user_id)
         except User.DoesNotExist:
             return Response({'message':'User not found'},status=404)
-        user.is_active = False
-        user.save()
+        if user.is_active:
+            user.is_active = False
+            message = "User banned"
+        else:
+            user.is_active = True
+            message = "User unbanned"
+        user.save()    
 
-        return Response({'message':'User banned'})
+        return Response({'message':message,'is_active':user.is_active})
 
 
 # jobcatergory view function
@@ -351,4 +413,64 @@ class ProfileView(APIView):
             serializer.save()
             return Response({'message': 'Profile updated'})
         
-        return Response(serializer.errors, status=400)    
+        return Response(serializer.errors, status=400) 
+
+
+
+# for sending notification
+def test_notification(request):
+    print("--- Triggering Test Notification ---") # This shows in your terminal
+    
+    channel_layer = get_channel_layer()
+    
+    async_to_sync(channel_layer.group_send)(
+        "job_updates", 
+        {
+            "type": "send_notification",
+            "message": "🔥 Real-time update from the Django View!"
+        }
+    )
+    
+    return HttpResponse("<h1>Notification Sent!</h1><p>Check your React Dashboard tab.</p>")
+
+
+# Fetch all notifications for logged in user
+class NotificationListView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        notifications = Notification.objects.filter(
+            recipient=request.user
+        ).order_by('-created_at')  # newest first
+        serializer = NotificationSerializer(notifications, many=True)
+        return Response(serializer.data)
+
+
+# Mark a single notification as read
+class MarkNotificationReadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, notification_id):
+        try:
+            notification = Notification.objects.get(
+                id=notification_id,
+                recipient=request.user  # user can only mark their own
+            )
+        except Notification.DoesNotExist:
+            return Response({'message': 'Not found'}, status=404)
+
+        notification.is_read = True
+        notification.save()
+        return Response({'message': 'Marked as read'})
+
+
+# Mark ALL notifications as read at once
+class MarkAllNotificationsReadView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request):
+        Notification.objects.filter(
+            recipient=request.user,
+            is_read=False
+        ).update(is_read=True)
+        return Response({'message': 'All marked as read'})

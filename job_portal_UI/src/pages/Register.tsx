@@ -44,7 +44,7 @@ function Register() {
      if (role==="jobseeker"){
       data.preferred_category = preferredCategory;
      }
-     if (role==="emplyer"){
+     if (role==="employer"){
       data.company_name = companyName
      }
       const response = await api.post("register/",data)

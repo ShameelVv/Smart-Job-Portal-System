@@ -7,12 +7,8 @@ function Applicants() {
   const { jobId } = useParams();
   const navigate = useNavigate();
 
-  //   to search bar
   const [search, setSearch] = useState("");
-
-  //   to filter the applicants
   const [filter, setFilter] = useState("all");
-  // to fetch appplicant
   const [applicants, setApplicants] = useState<any[]>([]);
 
   const fetchApplicants = async () => {
@@ -26,15 +22,15 @@ function Applicants() {
       });
 
       setApplicants(res.data);
-    } catch (err:any) {
-      if (err.response?.status===403){
-        alert("you are not allowed to view this")
-      }else{
-        console.log(err)
+    } catch (err: any) {
+      if (err.response?.status === 403) {
+        alert("you are not allowed to view this");
+      } else {
+        console.log(err);
       }
     }
   };
-  //   to update the status
+
   const updateStatus = async (applicationId: number, status: string) => {
     const token = localStorage.getItem("token");
 
@@ -46,11 +42,10 @@ function Applicants() {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-        },
+        }
       );
 
       alert("Status updated");
-
       fetchApplicants();
     } catch (err) {
       console.log(err);
@@ -63,108 +58,107 @@ function Applicants() {
   }, []);
 
   const filteredApplicants = applicants
-  .filter((app) =>
-    filter === "all" ? true : app.status === filter
-  )
-  .filter((app) =>
-    app.applicant_name.toLowerCase().includes(search.toLowerCase()) ||
-    app.applicant_email.toLowerCase().includes(search.toLowerCase())
-  );
+    .filter((app) => (filter === "all" ? true : app.status === filter))
+    .filter(
+      (app) =>
+        app.applicant_name.toLowerCase().includes(search.toLowerCase()) ||
+        app.applicant_email.toLowerCase().includes(search.toLowerCase())
+    );
 
-//   creating a variable to store the count of person on each respective tabs
-  const counts={
-    all:applicants.length,
-    pending:applicants.filter(a=>a.status === "pending").length,
-    shortlisted:applicants.filter(a=>a.status === "shortlisted").length,
-    rejected:applicants.filter(a=>a.status === "rejected").length,
-    hired:applicants.filter(a=>a.status === "hired").length,
-  }
+  const counts = {
+    all: applicants.length,
+    pending: applicants.filter((a) => a.status === "pending").length,
+    shortlisted: applicants.filter((a) => a.status === "shortlisted").length,
+    rejected: applicants.filter((a) => a.status === "rejected").length,
+    hired: applicants.filter((a) => a.status === "hired").length,
+  };
+
   return (
     <DashboardLayout>
+
+      {/* Back */}
       <button
-        onClick={() => navigate("/employerDashboard")} // 3. Tell it where to go
+        onClick={() => navigate("/employerDashboard")}
         className="flex items-center text-violet-700 hover:text-violet-900 font-medium mb-6 transition-colors"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-5 w-5 mr-1"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M15 19l-7-7 7-7"
-          />
-        </svg>
-        Back to Dashboard
+        ← Back to Dashboard
       </button>
-      <h1 className="text-2xl font-semibold mb-4">
-        Applicants ({filteredApplicants.length})
+
+      {/* Heading */}
+      <h1 className="text-2xl font-bold text-gray-900 mb-6 tracking-tight">
+        Applicants <span className="text-violet-700">({filteredApplicants.length})</span>
       </h1>
-    <div className="flex gap-6 ">
-             
-      <div className="flex gap-2 mb-4">
-        {["all", "pending", "shortlisted", "rejected", "hired"].map(
-          (status) => (
-            <button
-              key={status}
-              onClick={() => setFilter(status)}
-              className={`px-3 py-1 rounded text-sm capitalize
-        ${
-          filter === status
-            ? "bg-gray-800 text-white"
-            : "bg-gray-200 text-gray-700"
-        }
-      `}
-            >
-              {status} ({counts[status as keyof typeof counts]}) {/* implementing the count variable */}
-            </button>
-          ),
-        )}
+
+      {/* Filters + Search */}
+      <div className="flex gap-6 items-center mb-6 flex-wrap">
+
+        <div className="flex gap-2 flex-wrap">
+          {["all", "pending", "shortlisted", "rejected", "hired"].map(
+            (status) => (
+              <button
+                key={status}
+                onClick={() => setFilter(status)}
+                className={`px-3 py-1 rounded-full text-sm capitalize font-medium border transition
+                  ${
+                    filter === status
+                      ? "bg-violet-700 text-white border-violet-700 shadow-md shadow-violet-200"
+                      : "bg-white text-gray-600 border-violet-100 hover:bg-violet-50 hover:text-violet-700"
+                  }
+                `}
+              >
+                {status} ({counts[status as keyof typeof counts]})
+              </button>
+            )
+          )}
+        </div>
+
+        <input
+          type="text"
+          placeholder="Search by name or email..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-1/2 ml-auto px-4 py-2 rounded-xl border border-violet-100 bg-white/80 backdrop-blur-md text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-300 shadow-sm"
+        />
       </div>
-         <input
-        type="text"
-        placeholder="Search by name or email..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="w-full mb-4 px-3 py-2 border rounded-lg text-sm w-1/2 ml-auto"
-      />
-    </div>
+
+      {/* Empty */}
       {filteredApplicants.length === 0 && (
         <p className="text-gray-500 text-sm">No applicants yet</p>
       )}
+
+      {/* List */}
       {filteredApplicants.map((app) => (
-        <div key={app.id} className="bg-white p-4 rounded shadow mb-3">
-          <p className="font-semibold">{app.applicant_name}</p>
+        <div
+          key={app.id}
+          className="bg-white/80 backdrop-blur-md p-5 rounded-2xl shadow-lg shadow-violet-100 border border-violet-100 mb-4 hover:shadow-xl hover:shadow-violet-200 transition-all duration-300"
+        >
+          <p className="font-semibold text-gray-900">{app.applicant_name}</p>
           <p className="text-sm text-gray-500">{app.applicant_email}</p>
 
           <p
-            className={`text-xs font-semibold px-2 py-1 rounded inline-block
-            ${app.status === "pending" && "bg-yellow-100 text-yellow-700"}
-            ${app.status === "shortlisted" && "bg-blue-100 text-blue-700"}
-            ${app.status === "hired" && "bg-green-100 text-green-700"}
-            ${app.status === "rejected" && "bg-red-100 text-red-700"}
+            className={`text-xs font-semibold px-3 py-1 rounded-full inline-block mt-2 border
+              ${app.status === "pending" && "bg-yellow-100 text-yellow-700 border-yellow-200"}
+              ${app.status === "shortlisted" && "bg-violet-100 text-violet-700 border-violet-200"}
+              ${app.status === "hired" && "bg-green-100 text-green-700 border-green-200"}
+              ${app.status === "rejected" && "bg-red-100 text-red-700 border-red-200"}
             `}
           >
             {app.status.toUpperCase()}
           </p>
 
-          <div className="flex gap-2 mt-2">
+          <div className="flex gap-2 mt-3">
             {app.status === "pending" && (
               <>
                 <button
                   onClick={() => updateStatus(app.id, "shortlisted")}
-                  className="bg-blue-500 text-white px-3 py-1 rounded"
+                  className="bg-violet-700 text-white px-3 py-1 rounded-lg text-sm font-medium hover:bg-violet-800 shadow-md shadow-violet-200 transition"
                 >
                   Shortlist
                 </button>
 
                 <button
                   onClick={() => updateStatus(app.id, "rejected")}
-                  className="bg-red-500 text-white px-3 py-1 rounded"
+                  className="bg-red-500 text-white px-3 py-1 rounded-lg text-sm font-medium hover:bg-red-600 transition"
                 >
                   Reject
                 </button>
@@ -175,21 +169,24 @@ function Applicants() {
               <>
                 <button
                   onClick={() => updateStatus(app.id, "hired")}
-                  className="bg-green-600 text-white px-3 py-1 rounded"
+                  className="bg-green-600 text-white px-3 py-1 rounded-lg text-sm font-medium hover:bg-green-700 transition"
                 >
                   Hire
                 </button>
 
                 <button
                   onClick={() => updateStatus(app.id, "rejected")}
-                  className="bg-red-500 text-white px-3 py-1 rounded"
+                  className="bg-red-500 text-white px-3 py-1 rounded-lg text-sm font-medium hover:bg-red-600 transition"
                 >
                   Reject
                 </button>
               </>
             )}
+
             {(app.status === "hired" || app.status === "rejected") && (
-              <p className="text-xs text-gray-400 mt-2">Final decision made</p>
+              <p className="text-xs text-gray-400 mt-2">
+                Final decision made
+              </p>
             )}
           </div>
         </div>

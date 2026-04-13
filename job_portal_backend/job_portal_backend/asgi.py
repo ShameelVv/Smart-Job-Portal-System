@@ -1,16 +1,24 @@
-"""
-ASGI config for job_portal_backend project.
-
-It exposes the ASGI callable as a module-level variable named ``application``.
-
-For more information on this file, see
-https://docs.djangoproject.com/en/6.0/howto/deployment/asgi/
-"""
-
 import os
 
-from django.core.asgi import get_asgi_application
-
+# ✅ This MUST be the very first line before any Django imports
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'job_portal_backend.settings')
 
-application = get_asgi_application()
+# ✅ This must come second — sets up Django before anything else loads
+import django
+django.setup()
+
+# ✅ Now it's safe to import everything else
+from django.core.asgi import get_asgi_application
+from channels.routing import ProtocolTypeRouter, URLRouter
+from django.urls import path
+from jobs.consumers import JobNotificationConsumer
+from jobs.middleware import JwtAuthMiddleware
+
+application = ProtocolTypeRouter({
+    "http": get_asgi_application(),
+    "websocket": JwtAuthMiddleware(
+        URLRouter([
+            path("ws/notifications/", JobNotificationConsumer.as_asgi()),
+        ])
+    ),
+})
