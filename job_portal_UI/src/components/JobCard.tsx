@@ -2,15 +2,22 @@ import { useState } from "react";
 
 // The 'job' prop contains job details, 'onApply' is the function passed from the parent,
 // and 'isApplied' is a boolean checking if the user already applied to this specific ID.
-function JobCard({ job, onApply, isApplied }: any) {
+function JobCard({ job, onApply, isApplied, score }: any) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   return (
     <div
-      className={`bg-white/80 backdrop-blur-md p-5 rounded-2xl shadow-lg shadow-violet-100 border border-violet-100 transition-all duration-300 ${
-        isApplied ? "opacity-75" : "hover:shadow-xl hover:shadow-violet-200 hover:-translate-y-1"
+      className={`relative bg-white/80 backdrop-blur-md p-5 rounded-2xl shadow-lg shadow-violet-100 border border-violet-100 transition-all duration-300 ${
+        isApplied
+          ? "opacity-75"
+          : "hover:shadow-xl hover:shadow-violet-200 hover:-translate-y-1"
       }`}
     >
+      {score !== undefined && (
+        <span className="absolute top-3 right-3 bg-green-100 text-green-700 text-xs px-3 py-1 rounded-full font-semibold shadow">
+          {score}% Match
+        </span>
+      )}
       <h2 className="text-lg font-bold text-gray-900">{job.title}</h2>
       <p className="text-gray-500">{job.company_name}</p>
 

@@ -10,6 +10,8 @@ from .models import Job,JobCategory,Company,JobType,Skill,Notification
 
 from django.db import transaction
 
+import json
+
 # registration for creating user using modelserializer
 class RegisterSerializer(serializers.ModelSerializer):
     role = serializers.ChoiceField(choices=Profile.ROLE_CHOICES)
@@ -23,9 +25,11 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     email  = serializers.EmailField(required=True,
     validators=[validators.UniqueValidator(queryset=User.objects.all())])
+    skills = serializers.ListField(child=serializers.CharField(),required=False)    
+
     class Meta:
         model = User
-        fields = ['username','email','password','role','preferred_category','company_name' ]
+        fields = ['username','email','password','role','preferred_category','company_name','skills' ]
         extra_kwargs={
             'password':{'write_only': True}
         }
@@ -34,6 +38,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         role = validated_data.pop('role') #taking role from user input
         category_obj = validated_data.pop('preferred_category',None) #takes the prefferedcategory
         company_name = validated_data.pop('company_name',None)
+        skills = validated_data.pop('skills', [])
 
         
        # Enforce category for jobseeker
@@ -47,7 +52,8 @@ class RegisterSerializer(serializers.ModelSerializer):
         Profile.objects.create(
             user = user,
             role = role,
-            preferred_category=category_obj if role =='jobseeker' else None
+            preferred_category=category_obj if role =='jobseeker' else None,
+            skills=skills if role =='jobseeker'else None
         )
         # create company automatically 
         if role =="employer":
@@ -233,7 +239,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     preferred_category_name=serializers.CharField(source='preferred_category.name',read_only=True)
     class Meta:
         model = Profile
-        fields = ['username','email','role','preferred_category','preferred_category_name']
+        fields = ['username','email','role','preferred_category','preferred_category_name','skills']
 
 
 
@@ -245,7 +251,7 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Profile
-        fields = ['username', 'email', 'preferred_category']
+        fields = ['username', 'email', 'preferred_category','skills', 'resume']
 
     def update(self, instance, validated_data):
 
@@ -262,6 +268,14 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
             'preferred_category',
             instance.preferred_category
         )
+        if 'skills' in validated_data:
+            skills = validated_data['skills']
+            if isinstance(skills, str):
+                skills = json.loads(skills)
+            instance.skills=skills    
+        if 'resume' in validated_data:
+            instance.resume = validated_data['resume']
+    
         instance.save()
 
         return instance        

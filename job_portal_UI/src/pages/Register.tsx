@@ -3,9 +3,9 @@ import api from "../api/api";
 import { useNavigate } from "react-router-dom";
 
 function Register() {
-  
   const navigate = useNavigate();
 
+  const [skills, setSkills] = useState<string[]>([]);
 
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -31,30 +31,49 @@ function Register() {
     }
   };
 
+  const handleUpload = async (file: File) => {
+    const formData = new FormData();
+    formData.append("resume", file);
+
+    try {
+      
+      const res = await api.post("upload-resume/", formData);
+
+      console.log("AI Response:", res.data);
+
+      // auto fill
+      setEmail(res.data.email || "");
+      setSkills(res.data.skills || []);
+    } catch (error) {
+      console.log("Resume upload error:", error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
-     const data:any={
-      username,
-      email,
-      password,
-      role
-     };
-     if (role==="jobseeker"){
-      data.preferred_category = preferredCategory;
-     }
-     if (role==="employer"){
-      data.company_name = companyName
-     }
-      const response = await api.post("register/",data)
+      const data: any = {
+        username,
+        email,
+        password,
+        role,
+        skills :skills,
+      };
+      if (role === "jobseeker") {
+        data.preferred_category = preferredCategory;
+      }
+      if (role === "employer") {
+        data.company_name = companyName;
+      }
+      const response = await api.post("register/", data);
 
       alert("Registration successful");
       // for redirecting to respective dashboard after registering
       const userRole = response.data.role;
-      if(userRole==="employer"){
+      if (userRole === "employer") {
         navigate("/login");
-      }else{
+      } else {
         navigate("/login");
       }
     } catch (error: any) {
@@ -184,6 +203,44 @@ function Register() {
               />
             </div>
           )}
+          {skills.length > 0 && (
+            <div className="mt-3">
+              <p className="text-xs text-gray-500 mb-1">Detected Skills</p>
+
+              <div className="flex flex-wrap gap-2">
+                {skills.map((skill, index) => (
+                  <span
+                    key={index}
+                    className="bg-violet-100 text-violet-700 text-xs px-3 py-1 rounded-full font-medium"
+                  >
+                    {skill}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="border-2 border-dashed border-violet-300 rounded-2xl p-5 text-center bg-violet-50/40 hover:bg-violet-50 transition-all cursor-pointer">
+            <label className="block cursor-pointer">
+              <div className="flex flex-col items-center justify-center gap-2">
+                <div className="text-3xl">📄</div>
+
+                <p className="text-sm font-semibold text-gray-700">
+                  Upload your Resume
+                </p>
+
+                <p className="text-xs text-gray-400">
+                  Drag & drop or click to browse (PDF only)
+                </p>
+              </div>
+
+              <input
+                type="file"
+                accept=".pdf"
+                className="hidden"
+                onChange={(e) => handleUpload(e.target.files![0])}
+              />
+            </label>
+          </div>
 
           <button
             type="submit"

@@ -100,8 +100,8 @@ class Profile(models.Model):
 
 
 
-
-
+    resume = models.FileField(upload_to="resumes/", null=True, blank=True)
+    skills = models.JSONField(default=list)
     user = models.OneToOneField(User, on_delete=models.CASCADE)
 
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)

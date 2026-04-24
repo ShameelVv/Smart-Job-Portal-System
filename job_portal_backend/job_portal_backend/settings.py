@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure--$dx+3cc+-7ofcsk*!q3vyogn@ej9q1=+^)ea_ra6%g5)jus!_
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 
 
 # Application definition
@@ -131,7 +131,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # JWT Configuration
 REST_FRAMEWORK = {

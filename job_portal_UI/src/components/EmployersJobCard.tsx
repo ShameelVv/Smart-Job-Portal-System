@@ -12,7 +12,7 @@ function EmployerJobCard({ job }: any) {
 
         {job.applicant_count > 0 && (
           <div>
-            <span className="bg-violet-100 text-violet-700 text-xs font-semibold px-3 py-1 rounded-full border border-violet-200">
+            <span className="bg-violet-100 text-violet-700 text-xs font-semibold px-2 py-1 rounded-full border border-violet-200">
               🔴 {job.applicant_count} Applicants
             </span>
           </div>

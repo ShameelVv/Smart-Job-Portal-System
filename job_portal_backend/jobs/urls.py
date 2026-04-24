@@ -1,10 +1,10 @@
 from django.contrib import admin
 from django.urls import path
-from .views import RegisterView,LoginView,JobCreateView,JobListView,ApplyJobView,ApplicationView,ApplicantView,UpdateApplicationStatusView,AdminUserView,AdminJobsView,AdminApplicationView,DeleteJobView,BanUserView,JobCategoryView,CurrentUserView,JobTypeView,SkillView,ProfileView,test_notification,NotificationListView,MarkNotificationReadView,MarkAllNotificationsReadView
+from .views import RegisterView,LoginView,JobCreateView,JobListView,ApplyJobView,ApplicationView,ApplicantView,UpdateApplicationStatusView,AdminUserView,AdminJobsView,AdminApplicationView,DeleteJobView,BanUserView,JobCategoryView,CurrentUserView,JobTypeView,SkillView,ProfileView,test_notification,NotificationListView,MarkNotificationReadView,MarkAllNotificationsReadView,ResumeUploadView,RecommendedJobsView
 
 # to upload the resume
-from django.conf import settings
-from django.conf.urls.static import static
+# from django.conf import settings
+# from django.conf.urls.static import static
 # for jwt authentication
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -53,12 +53,15 @@ urlpatterns = [
     path('test-notify/', test_notification),
 
     path('api/notifications/', NotificationListView.as_view()),
-path('api/notifications/<int:notification_id>/read/', MarkNotificationReadView.as_view()),
-path('api/notifications/read-all/', MarkAllNotificationsReadView.as_view()),
+    path('api/notifications/<int:notification_id>/read/', MarkNotificationReadView.as_view()),
+    path('api/notifications/read-all/', MarkAllNotificationsReadView.as_view()),
+
+    path("api/upload-resume/", ResumeUploadView.as_view()),
+    path("api/recommended-jobs/", RecommendedJobsView.as_view()),
 
 ]
 
 
 # Add this to allow viewing uploaded files in the browser
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+# if settings.DEBUG:
+    # urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -10,7 +10,6 @@ from .models import Job, Profile,Application,JobCategory,Company,JobType,Skill,N
 
 from django.contrib.auth.models import User
 
-from rest_framework.parsers import MultiPartParser, FormParser
 
 from .utils import send_notification
 
@@ -19,6 +18,12 @@ from django.http import HttpResponse
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from .resume_parser import  extract_text_from_pdf, extract_basic_details, detect_job_role, extract_skills,extract_name
+
+from .recommendation import calculate_match_score
 
 
 # Create your views here.
@@ -395,6 +400,7 @@ class SkillView(APIView):
 class ProfileView(APIView):
 
     permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def get(self, request):
         profile = Profile.objects.get(user=request.user)
@@ -474,3 +480,79 @@ class MarkAllNotificationsReadView(APIView):
             is_read=False
         ).update(is_read=True)
         return Response({'message': 'All marked as read'})
+    
+
+
+
+class ResumeUploadView(APIView):
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request):
+        file = request.FILES.get("resume")
+
+        if not file:
+            return Response({"error": "No file uploaded"}, status=400)
+
+        text = extract_text_from_pdf(file)
+
+        data = extract_basic_details(text)
+        skills = extract_skills(text)
+        role = detect_job_role(text)
+
+       
+        # return response to frontend
+        data["skills"] = skills
+        data["role"] = role
+
+        return Response(data)
+
+
+class RecommendedJobsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        profile = Profile.objects.get(user=request.user)
+
+        user_skills = profile.skills or []
+
+        jobs = Job.objects.all()
+
+        scored_jobs = []
+
+        for job in jobs:
+            job_skills = [skill.name for skill in job.skills.all()]
+
+            score = calculate_match_score(user_skills, job_skills)
+
+            if score> 0.3:
+                scored_jobs.append({
+                    "job": job,
+                    "score": score
+                })
+
+           
+
+        # sort highest score first
+        scored_jobs.sort(key=lambda x: x["score"], reverse=True)
+        response_data = []
+
+        for item in scored_jobs:
+            job = item["job"]
+            score = item["score"]
+
+            response_data.append({
+                "id": job.id,
+                "title": job.title,
+                "location":job.location,
+                "company_name": job.company.name,
+                "salary": job.salary,
+                "score": int(score * 100),  # 🔥 match %
+                "skills": [s.name for s in job.skills.all()],
+                "category_name":job.category.name,
+                "job_type_name":job.job_type.name,
+            })
+
+
+
+
+        return Response(response_data)    
